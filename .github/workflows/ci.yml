@@ -1,0 +1,56 @@
+name: CI - tests & problem2 smoke
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.10]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install project (editable) and test deps
+        run: |
+          # install package + test deps; adjust extras name if needed
+          pip install -e .
+          pip install pytest
+
+      - name: Run unit tests
+        run: |
+          python -m pytest -q
+
+      - name: Problem2 smoke test (run tool)
+        run: |
+          # create a small sample input (mock PR info) and run the tool
+          cat > input.json <<'JSON'
+          {
+            "server": "mock",
+            "repo": "demo/repo",
+            "pr_number": 1
+          }
+          JSON
+          python -m pr_agent.tools.problem2 input.json
+
+      - name: Upload problem2 output (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: problem2-run
+          path: |
+            input.json
